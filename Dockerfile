@@ -1,8 +1,16 @@
 FROM nvidia/cuda:10.2-cudnn7-devel-ubuntu18.04
 
-# Basic toolchain
+# To avoid debconf messages
+# https://github.com/phusion/baseimage-docker/issues/58
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
+# Install apt-utils toolchain
 RUN apt-get update && apt-get install -y \
-        apt-utils \
+        apt-utils && \
+    apt-get autoremove -y
+
+# Install basic toolchain
+RUN apt-get update && apt-get install -y \
         build-essential \
         git \
         wget \
@@ -13,6 +21,10 @@ RUN apt-get update && apt-get install -y \
         zlib1g-dev \
         htop \
         cmake \
+        lcov \
+        software-properties-common \
+        python3-dev \
+        python3-pip \
         nano && \
     apt-get autoremove -y
 
@@ -22,11 +34,17 @@ RUN apt-get update && apt-get install -y \
         libjpeg-dev \
         libpng-dev \
         libtiff-dev \
-        libjasper-dev \
         libswscale-dev \
         libavcodec-dev \
         libavformat-dev && \
     apt-get autoremove -y
+
+# Getting OpenCV dependencie libjasper-dev available with apt, but adding earlier release of ubuntu packages 
+# see https://stackoverflow.com/questions/44468081/unable-to-locate-package-libjasper-dev
+RUN add-apt-repository "deb http://security.ubuntu.com/ubuntu xenial-security main" && \
+    apt-get update && apt-get install -y \  
+        libjasper-dev && \
+    apt-get autoremove -y  
 
 # Getting other dependencies
 RUN apt-get update && apt-get install -y \
@@ -38,7 +56,7 @@ RUN apt-get update && apt-get install -y \
         libdlib-dev && \
     apt-get autoremove -y
 
-ENV PYTHON_VERSION="3.7"
+RUN pip3 install numpy
 RUN add-apt-repository ppa:deadsnakes/ppa && \
     apt-get update && apt-get install -y \
         python${PYTHON_VERSION} && \
@@ -49,7 +67,7 @@ RUN mkdir -p /tmp && \
     cd /tmp && \
     wget --no-check-certificate -O cgreen.zip https://github.com/cgreen-devs/cgreen/archive/${CGREEN_VERSION}.zip && \
     unzip cgreen.zip && \
-    cd cgreen && \
+    cd cgreen-${CGREEN_VERSION} && \
     make && \
     make test && \
     make install
